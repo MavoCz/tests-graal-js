@@ -13,7 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ScriptUtils {
-    private static final Logger logger = LoggerFactory.getLogger(ScriptRunner.class);
+    private static final Logger logger = LoggerFactory.getLogger(ScriptHandler.class);
 
     public static Value stringify(Context context, Value data) {
         Value global = context.getBindings("js");

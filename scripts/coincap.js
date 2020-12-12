@@ -1,7 +1,7 @@
 (function fetch() {
-    const rates = client.get('/v2/rates');
+    const rates = client.get('https://api.coincap.io/v2/rates');
     console.log(rates.status);
-    const assets = client.get('/v2/assets');
+    const assets = client.get('https://api.coincap.io/v2/assets');
     console.log(assets.status);
 
     return {

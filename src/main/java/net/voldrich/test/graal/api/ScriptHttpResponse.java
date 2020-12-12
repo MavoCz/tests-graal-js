@@ -1,10 +1,11 @@
-package net.voldrich.test.graal;
+package net.voldrich.test.graal.api;
 
 import java.net.http.HttpResponse;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
+import org.springframework.web.reactive.function.client.ClientResponse;
 
 public class ScriptHttpResponse {
 
@@ -15,10 +16,10 @@ public class ScriptHttpResponse {
     @HostAccess.Export
     public final String data;
 
-    public ScriptHttpResponse(Context context, HttpResponse<String> response) {
+    public ScriptHttpResponse(Context context, ClientResponse response, String body) {
         this.context = context;
-        this.status = response.statusCode();
-        this.data = response.body();
+        this.status = response.statusCode().value();
+        this.data = body;
     }
 
     @HostAccess.Export
