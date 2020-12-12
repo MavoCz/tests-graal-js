@@ -34,17 +34,20 @@ public class ScriptRunner {
         try (Context context = Context.newBuilder(JS_LANGUAGE_TYPE).build()) {
             Value bindings = context.getBindings(JS_LANGUAGE_TYPE);
             bindings.putMember("client", new ScriptHttpClient(context, baseUrl));
-            bindings.putMember("store", new ScriptDataStore(context));
 
             logger.info("Script eval start");
-            Value scriptFunctions = context.eval(source);
+            Value response = context.eval(source);
             logger.info("Script eval finished");
-            ScriptUtils.logValue(scriptFunctions, 0);
-
-            Value functionToInvoke = scriptFunctions.getMember("rates");
-            if (functionToInvoke.canExecute()) {
-                functionToInvoke.execute();
+            while (response.canExecute()) {
+                response = response.execute();
             }
+
+            if (!response.isString()) {
+                response = ScriptUtils.stringifyPretty(context, response);
+            }
+
+            System.out.println(response);
+
         }
     }
 

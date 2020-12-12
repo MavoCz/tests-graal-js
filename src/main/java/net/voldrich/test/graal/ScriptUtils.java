@@ -7,12 +7,23 @@ import java.io.InputStreamReader;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ScriptUtils {
     private static final Logger logger = LoggerFactory.getLogger(ScriptRunner.class);
+
+    public static Value stringify(Context context, Value data) {
+        Value global = context.getBindings("js");
+        return global.getMember("JSON").getMember("stringify").execute(data);
+    }
+
+    public static Value stringifyPretty(Context context, Value data) {
+        Value global = context.getBindings("js");
+        return global.getMember("JSON").getMember("stringify").execute(data, null, 2);
+    }
 
     public static void logValue(Value jsValue, int indent) {
         jsValue.getMemberKeys().forEach(key -> {

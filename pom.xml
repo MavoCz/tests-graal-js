@@ -12,7 +12,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>1.11</maven.compiler.source>
         <maven.compiler.target>1.11</maven.compiler.target>
-        <graalvm.version>20.2.0</graalvm.version>
+        <graalvm.version>20.3.0</graalvm.version>
     </properties>
 
     <dependencies>
@@ -83,7 +83,7 @@
                     </archive>
                 </configuration>
             </plugin>
-            <plugin>
+            <!--<plugin>
                 <groupId>org.graalvm.nativeimage</groupId>
                 <artifactId>native-image-maven-plugin</artifactId>
                 <version>${graalvm.version}</version>
@@ -99,15 +99,15 @@
                     <skip>false</skip>
                     <imageName>script_runner</imageName>
                     <buildArgs>
-                        --no-fallback
-                        --language:js
-                        --initialize-at-build-time
-                        --enable-https
+                        &#45;&#45;no-fallback
+                        &#45;&#45;language:js
+                        &#45;&#45;initialize-at-build-time
+                        &#45;&#45;enable-https
                         -H:ReflectionConfigurationFiles=../reflect.json
                         -H:IncludeResources=.*
                     </buildArgs>
                 </configuration>
-            </plugin>
+            </plugin>-->
         </plugins>
     </build>
 

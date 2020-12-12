@@ -1,17 +1,13 @@
+(function fetch() {
+    const rates = client.get('/v2/rates');
+    console.log(rates.status);
+    const assets = client.get('/v2/assets');
+    console.log(assets.status);
 
-function fetchRates() {
-    var response = client.get('/v2/rates');
-    console.log(response.status);
-    var ratesJson = JSON.parse(response.data) ;
-    var btcRates = ratesJson["data"].filter(record => record["symbol"] === "BTC");
-    store.save("rates", btcRates);
-
-    var assets = client.get('/v2/assets');
-    store.save("assets", assets.json()); // third parameter is root path
-}
-
-({
-    "rates": fetchRates
+    return {
+        rates: rates.json(),
+        assets: assets.json()
+    }
 })
 
 
