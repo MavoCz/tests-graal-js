@@ -2,6 +2,7 @@ package net.voldrich.test.graal.api;
 
 import java.net.http.HttpResponse;
 
+import net.voldrich.test.graal.script.ScriptUtils;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
@@ -24,8 +25,7 @@ public class ScriptHttpResponse {
 
     @HostAccess.Export
     public Value json() {
-        Value global = context.getBindings("js");
-        return global.getMember("JSON").getMember("parse").execute(this.data);
+        return ScriptUtils.parseJson(context, data);
     }
 
     public String text() {

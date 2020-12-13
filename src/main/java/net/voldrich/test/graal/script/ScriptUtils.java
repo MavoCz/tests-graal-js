@@ -1,4 +1,8 @@
-package net.voldrich.test.graal;
+package net.voldrich.test.graal.script;
+
+import lombok.extern.slf4j.Slf4j;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Value;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -7,30 +11,40 @@ import java.io.InputStreamReader;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Value;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+@Slf4j
 public class ScriptUtils {
-    private static final Logger logger = LoggerFactory.getLogger(ScriptHandler.class);
 
-    public static Value stringify(Context context, Value data) {
+    public static Value getGlobalMember(Context context, String name) {
         Value global = context.getBindings("js");
-        return global.getMember("JSON").getMember("stringify").execute(data);
+        return global.getMember(name);
+    }
+
+    public static Value getJSONMember(Context context) {
+        return getGlobalMember(context, "JSON");
+    }
+
+    public static Value parseJson(Context context, String data) {
+        return getJSONMember(context).getMember("parse").execute(data);
+    }
+
+    public static Value stringify(Context context, Object data) {
+        return getJSONMember(context).getMember("stringify").execute(data);
     }
 
     public static Value stringifyPretty(Context context, Value data) {
-        Value global = context.getBindings("js");
-        return global.getMember("JSON").getMember("stringify").execute(data, null, 2);
+        return getJSONMember(context).getMember("stringify").execute(data, null, 2);
+    }
+
+    public static Value constructPromise(Context context) {
+        return getGlobalMember(context, "Promise");
     }
 
     public static void logValue(Value jsValue, int indent) {
         jsValue.getMemberKeys().forEach(key -> {
             StringBuilder sb = new StringBuilder();
             IntStream.range(0, indent).forEach(value -> sb.append("  "));
-            logger.info("{}{}", sb.toString(), key);
-            logValue(jsValue.getMember(key), indent +1);
+            log.info("{}{}", sb.toString(), key);
+            logValue(jsValue.getMember(key), indent + 1);
         });
     }
 
