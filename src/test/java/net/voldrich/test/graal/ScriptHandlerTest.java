@@ -1,68 +1,100 @@
 package net.voldrich.test.graal;
 
-import com.github.tomakehurst.wiremock.WireMockServer;
-import net.voldrich.test.graal.script.AsyncScriptExecutor;
-import org.junit.jupiter.api.BeforeEach;
+import com.github.tomakehurst.wiremock.matching.EqualToPattern;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.MediaType;
-import org.springframework.test.web.reactive.server.WebTestClient;
-import org.springframework.web.reactive.function.BodyInserters;
-import ru.lanwen.wiremock.ext.WiremockResolver;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 
-@ExtendWith(WiremockResolver.class)
-@WebFluxTest(controllers = ScriptServerRouter.class)
-@Import({ScriptHandler.class, AsyncScriptExecutor.class})
-class ScriptHandlerTest {
-
-    protected WireMockServer wireMock;
-
-    @Autowired
-    private WebTestClient webClient;
-
-    @BeforeEach
-    void setUp(@WiremockResolver.Wiremock WireMockServer wireMock) {
-        this.wireMock = wireMock;
-    }
-
-    private String fromResource(String scriptPath) {
-        try {
-            File resource = new ClassPathResource(scriptPath).getFile();
-            return new String(Files.readAllBytes(resource.toPath()));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
+class ScriptHandlerTest extends BaseWiremockTest {
 
     @Test
     void testScriptWithHttpRequest() {
         wireMock.stubFor(get(urlEqualTo("/company/info"))
                 .willReturn(aResponse()
                         .withStatus(200)
+                        .withFixedDelay(50)
                         .withBody(fromResource("responses/company-info.json"))));
 
         wireMock.stubFor(get(urlEqualTo("/company/ceo"))
                 .willReturn(aResponse()
                         .withStatus(200)
+                        .withFixedDelay(100)
                         .withBody(fromResource("responses/ceo-list.json"))));
 
-        webClient.post()
-                .uri("/script/execute")
-                .contentType(MediaType.APPLICATION_JSON)
-                .header("baseurl", wireMock.baseUrl())
-                .body(BodyInserters.fromValue(fromResource("scripts/test-http-get.js")))
-                .exchange()
+        doScriptRequest("scripts/test-http-get.js")
                 .expectStatus()
                 .is2xxSuccessful();
     }
+
+    @Test
+    void testScriptWithHttpRequestWithHeaders() {
+        String mediaType = "text/json;charset=UTF-8";
+        String returnedCustomHeaderValue = "value";
+        wireMock.stubFor(get(urlEqualTo("/company/info"))
+                .withHeader("a", new EqualToPattern("valuea"))
+                .withHeader("b", new EqualToPattern("valueb"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", mediaType)
+                        .withHeader("customheader", returnedCustomHeaderValue)
+                        .withBody(fromResource("responses/company-info.json"))));
+
+        doScriptRequest("scripts/test-http-get-headers.js")
+                .expectStatus()
+                .is2xxSuccessful()
+                .expectHeader().contentType(MediaType.APPLICATION_JSON)
+                .expectBody()
+                .jsonPath("$.status").isEqualTo("200")
+                .jsonPath("$.mediaType").isEqualTo(mediaType)
+                .jsonPath("$.headers.customheader").isEqualTo(returnedCustomHeaderValue);
+    }
+
+    @Test
+    void testScriptWithPostHttpRequest() {
+        wireMock.stubFor(post(urlEqualTo("/company/add"))
+                .withRequestBody(equalToJson("{ \"data\": \"valuedata\" }"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withBody(fromResource("responses/company-info.json"))));
+
+        doScriptRequest("scripts/test-http-post-headers.js")
+                .expectStatus()
+                .is2xxSuccessful()
+                .expectHeader().contentType(MediaType.APPLICATION_JSON)
+                .expectBody()
+                .jsonPath("$.status").isEqualTo("200");
+    }
+
+    @Test
+    void testScriptWithPostHttpRequestWithHeaders() {
+        String mediaType = "text/json;charset=UTF-8";
+        String returnedCustomHeaderValue = "value";
+        wireMock.stubFor(post(urlEqualTo("/company/add"))
+                .withHeader("a", new EqualToPattern("valuea"))
+                .withHeader("b", new EqualToPattern("valueb"))
+                .withRequestBody(equalToJson("{ \"data\": \"valuedata\" }"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", mediaType)
+                        .withHeader("customheader", returnedCustomHeaderValue)
+                        .withBody(fromResource("responses/company-info.json"))));
+
+        doScriptRequest("scripts/test-http-post-headers.js")
+                .expectStatus()
+                .is2xxSuccessful()
+                .expectHeader().contentType(MediaType.APPLICATION_JSON)
+                .expectBody()
+                .jsonPath("$.status").isEqualTo("200")
+                .jsonPath("$.mediaType").isEqualTo(mediaType)
+                .jsonPath("$.headers.customheader").isEqualTo(returnedCustomHeaderValue);
+    }
+
+    @Test
+    void testScriptWithHttpRequest404() {
+        doScriptRequest("scripts/test-http-get-404.js")
+                .expectStatus()
+                .is4xxClientError();
+    }
+
 }

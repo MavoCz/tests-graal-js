@@ -29,15 +29,38 @@ public class AsyncScriptExecutor {
     }
 
     private Mono<String> evaluateAndExecuteScript(ContextWrapper contextWrapper) {
-        log.info("Evaluating script");
-        Value response = contextWrapper.eval();
+        Mono<Object> functionExecution = Mono.create(monoSink -> {
+            monoSink.onCancel(contextWrapper::close);
+            log.info("Evaluating script");
+            Value response = contextWrapper.eval();
 
-        if (response.canExecute()) {
-            response = response.execute();
-        }
+            if (response.canExecute()) {
+                response = response.execute();
+            }
 
-        return resolvePromise(response)
+            monoSink.success(response);
+        });
+
+        return functionExecution
+                .flatMap(response -> resolvePromise(response, contextWrapper))
                 .map(value -> ScriptUtils.stringify(contextWrapper.getContext(), value).toString());
+    }
+
+    private Mono<Object> resolvePromise(Object response, ContextWrapper contextWrapper) {
+        if (response instanceof Value) {
+            Value promise = (Value) response;
+            if (promise.getMetaObject().getMetaSimpleName().equals("Promise")) {
+                return Mono.create(sink -> {
+                    sink.onCancel(contextWrapper::close);
+                    PromiseConsumer<Object> resolve = new PromiseConsumer<>(sink::success);
+                    PromiseConsumer<Object> reject = new PromiseConsumer<>(error -> handleError(sink, error));
+
+                    promise.invokeMember("then", resolve);
+                    promise.invokeMember("catch", reject);
+                });
+            }
+        }
+        return Mono.just(response);
     }
 
     public Value wrapMonoInPromise(Context context, Mono<?> operation) {
@@ -54,21 +77,7 @@ public class AsyncScriptExecutor {
         });
     }
 
-    private Mono<Object> resolvePromise(Object response) {
-        if (response instanceof Value) {
-            Value promise = (Value) response;
-            if (promise.getMetaObject().getMetaSimpleName().equals("Promise")) {
-                return Mono.create(sink -> {
-                    PromiseConsumer<Object> resolve = new PromiseConsumer<>(sink::success);
-                    PromiseConsumer<Object> reject = new PromiseConsumer<>(error -> handleError(sink, error));
 
-                    promise.invokeMember("then", resolve);
-                    promise.invokeMember("catch", reject);
-                });
-            }
-        }
-        return Mono.just(response);
-    }
 
     private void handleError(MonoSink<Object> sink, Object error) {
         if (error instanceof Throwable) {

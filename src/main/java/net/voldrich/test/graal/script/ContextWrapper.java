@@ -10,7 +10,7 @@ public class ContextWrapper implements AutoCloseable {
 
     private final Context context;
     private final Source source;
-    private Scheduler scheduler;
+    private final Scheduler scheduler;
     private boolean closed = false;
 
     public ContextWrapper(Context context, Source source, Scheduler scheduler) {
