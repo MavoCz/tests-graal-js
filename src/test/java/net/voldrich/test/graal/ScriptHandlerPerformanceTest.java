@@ -2,6 +2,7 @@ package net.voldrich.test.graal;
 
 import com.codahale.metrics.ConsoleReporter;
 import com.codahale.metrics.Timer;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Flux;
@@ -15,6 +16,7 @@ import java.util.concurrent.TimeUnit;
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 
+@Disabled
 public class ScriptHandlerPerformanceTest extends BaseWiremockTest {
 
     @Test

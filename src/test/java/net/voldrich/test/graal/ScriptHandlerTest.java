@@ -1,6 +1,7 @@
 package net.voldrich.test.graal;
 
 import com.github.tomakehurst.wiremock.matching.EqualToPattern;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 
@@ -95,6 +96,24 @@ class ScriptHandlerTest extends BaseWiremockTest {
         doScriptRequest("scripts/test-http-get-404.js")
                 .expectStatus()
                 .is4xxClientError();
+    }
+
+    @Test
+    void testScriptErrorSyntax() {
+        doScriptRequest("scripts/test-script-error-syntax.js")
+                .expectStatus()
+                .is4xxClientError()
+                .expectBody()
+                .jsonPath("$.message").value(Matchers.startsWith("Script execution failed: SyntaxError: script:2:30 Expected"));
+    }
+
+    @Test
+    void testScriptErrorEval() {
+        doScriptRequest("scripts/test-script-error-eval.js")
+                .expectStatus()
+                .is4xxClientError()
+                .expectBody()
+                .jsonPath("$.message").value(Matchers.startsWith("Script execution failed: SyntaxError: script:2:30 Expected"));
     }
 
 }

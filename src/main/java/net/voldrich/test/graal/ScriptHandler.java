@@ -81,8 +81,9 @@ public class ScriptHandler {
                 .collect(Collectors.joining("\n"));
         log.warn("Script execution failed {} near {}", exception.toString(), scriptStack);
         return Mono.error(new ResponseStatusException(
-                HttpStatus.I_AM_A_TEAPOT,
-                "Script execution failed " + exception.toString(), exception));
+                HttpStatus.BAD_REQUEST,
+                "Script execution failed: " + exception.getMessage(),
+                exception));
     }
 
 }

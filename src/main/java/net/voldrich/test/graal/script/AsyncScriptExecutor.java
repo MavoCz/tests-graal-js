@@ -1,13 +1,13 @@
 package net.voldrich.test.graal.script;
 
 import lombok.extern.slf4j.Slf4j;
+import net.voldrich.test.graal.api.ScriptExecutionException;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
-import reactor.core.publisher.MonoSink;
 import reactor.core.scheduler.Scheduler;
 
 import java.util.function.Supplier;
@@ -29,16 +29,20 @@ public class AsyncScriptExecutor {
     }
 
     private Mono<String> evaluateAndExecuteScript(ContextWrapper contextWrapper) {
-        Mono<Object> functionExecution = Mono.create(monoSink -> {
-            monoSink.onCancel(contextWrapper::close);
+        Mono<Object> functionExecution = Mono.create(sink -> {
+            //sink.onCancel(contextWrapper::close);
             log.info("Evaluating script");
-            Value response = contextWrapper.eval();
+            try {
+                Value response = contextWrapper.eval();
 
-            if (response.canExecute()) {
-                response = response.execute();
+                if (response.canExecute()) {
+                    response = response.execute();
+                }
+
+                sink.success(response);
+            } catch (Exception e) {
+                sink.error(e);
             }
-
-            monoSink.success(response);
         });
 
         return functionExecution
@@ -51,12 +55,13 @@ public class AsyncScriptExecutor {
             Value promise = (Value) response;
             if (promise.getMetaObject().getMetaSimpleName().equals("Promise")) {
                 return Mono.create(sink -> {
-                    sink.onCancel(contextWrapper::close);
+                    //sink.onCancel(contextWrapper::close);
                     PromiseConsumer<Object> resolve = new PromiseConsumer<>(sink::success);
-                    PromiseConsumer<Object> reject = new PromiseConsumer<>(error -> handleError(sink, error));
+                    PromiseConsumer<Object> reject = new PromiseConsumer<>(error -> sink.error(convertError(error)));
 
-                    promise.invokeMember("then", resolve);
-                    promise.invokeMember("catch", reject);
+                    promise
+                            .invokeMember("then", resolve)
+                            .invokeMember("catch", reject);
                 });
             }
         }
@@ -72,20 +77,31 @@ public class AsyncScriptExecutor {
             // This ensures that one particular script code is always executed on the same thread
             // and we don't need to manage context.enter and context.leave.
             operation.publishOn(scriptSchedulers.getSchedulerBoundToContext(context))
-                    .subscribe(resolve::execute, reject::execute);
+                    .subscribe(resolve::executeVoid, reject::executeVoid);
             return null;
         });
     }
 
+    private Throwable convertError(Object error) {
+        try {
+            if (error instanceof Throwable) {
+                // received when error is thrown in host (java) code
+                return ((Throwable) error);
+            } else {
+                // received when error is thrown in JS
+                Value errorValue = Value.asValue(error);
 
+                if (errorValue.isException()) {
+                    return errorValue.throwException();
+                } else if (errorValue.hasMember("stack")) {
+                    Value polyglotValue = errorValue.getMember("stack");
+                    return new ScriptExecutionException(polyglotValue.toString());
+                }
+            }
 
-    private void handleError(MonoSink<Object> sink, Object error) {
-        if (error instanceof Throwable) {
-            sink.error(((Throwable) error));
-        } else if (error instanceof Value) {
-            sink.error(((Value) error).throwException());
-        } else {
-            sink.error(new UnsupportedOperationException("Unknown exception type"));
+            return new ScriptExecutionException("Unknown exception when converting error");
+        } catch (Exception e) {
+            return e;
         }
     }
 
