@@ -4,6 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.proxy.ProxyExecutable;
+import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
 
 @Slf4j
@@ -43,6 +45,30 @@ public class ContextWrapper implements AutoCloseable {
 
     public void forceClose() {
         this.close(true);
+    }
+
+    public Value wrapMonoInPromise(Mono<?> operation, String description) {
+        return ScriptUtils.constructPromise(context).newInstance((ProxyExecutable) arguments -> {
+            Value resolve = arguments[0];
+            Value reject = arguments[1];
+
+            // Operation result needs to be published on a thread that executed the script.
+            // This ensures that one particular script code is always executed on the same thread
+            // and we don't need to manage context.enter and context.leave.
+            operation.publishOn(scheduler)
+                    .subscribe(
+                            result -> executeAndIgnoreClosed(resolve, result, description + " succeeded"),
+                            error -> executeAndIgnoreClosed(reject, error, description + " failed"));
+            return null;
+        });
+    }
+
+    private void executeAndIgnoreClosed(Value fnc, Object argument, String msg) {
+        try {
+            fnc.executeVoid(argument);
+        } catch (Exception ex) {
+            log.warn("Exception when executing Async operation {} with argument: {}", msg, argument.toString());
+        }
     }
 
     public void close(boolean force) {

@@ -13,7 +13,6 @@ public class ScriptServerRouter {
 
     @Bean
     public RouterFunction<ServerResponse> route(ScriptHandler scriptHandler) {
-
         return RouterFunctions
                 .route(RequestPredicates
                                 .POST("/script/execute")

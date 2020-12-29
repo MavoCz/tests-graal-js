@@ -1,13 +1,11 @@
 package net.voldrich.test.graal.script;
 
-import org.graalvm.polyglot.Context;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 
 public class ScriptSchedulers {
@@ -16,12 +14,10 @@ public class ScriptSchedulers {
 
     private final int numberOfSchedulers;
 
-    private final ConcurrentHashMap<Context, Scheduler> contextToSchedulerMap = new ConcurrentHashMap<>();
-
     private volatile int nextScheduler = 0;
 
     public ScriptSchedulers() {
-        this(Runtime.getRuntime().availableProcessors() * 2);
+        this(Runtime.getRuntime().availableProcessors());
     }
 
     public ScriptSchedulers(int numberOfSchedulers) {
@@ -38,17 +34,5 @@ public class ScriptSchedulers {
     public Scheduler getNextScheduler() {
         nextScheduler = (nextScheduler + 1) % numberOfSchedulers;
         return schedulerList.get(nextScheduler);
-    }
-
-    public void bindContext(Context context, Scheduler scheduler) {
-        contextToSchedulerMap.put(context, scheduler);
-    }
-
-    public void unbindContext(Context context) {
-        contextToSchedulerMap.remove(context);
-    }
-
-    public Scheduler getSchedulerBoundToContext(Context context) {
-        return contextToSchedulerMap.get(context);
     }
 }

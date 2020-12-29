@@ -5,7 +5,9 @@ import net.voldrich.test.graal.api.ScriptConfig;
 import net.voldrich.test.graal.api.ScriptExecutionException;
 import net.voldrich.test.graal.api.ScriptHttpClient;
 import net.voldrich.test.graal.script.AsyncScriptExecutor;
-import org.graalvm.polyglot.*;
+import net.voldrich.test.graal.script.ContextWrapper;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -17,8 +19,6 @@ import org.springframework.web.reactive.function.server.ServerResponse;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 
-import java.io.IOException;
-import java.time.ZoneId;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -30,40 +30,24 @@ public class ScriptHandler {
 
     private static final WebClient client = WebClient.builder().build();
 
-    private static final Engine engine = Engine.create();
-
     public final AsyncScriptExecutor asyncScriptExecutor;
 
     public ScriptHandler(AsyncScriptExecutor asyncScriptExecutor) {
         this.asyncScriptExecutor = asyncScriptExecutor;
     }
 
-    private Context createContext(ServerRequest request) {
-        Context.Builder contextBuilder = Context.newBuilder(JS_LANGUAGE_TYPE)
-                .engine(engine)
-                .timeZone(ZoneId.of("UTC"));
-
-        Context context = contextBuilder.build();
-        Value bindings = context.getBindings(JS_LANGUAGE_TYPE);
-        bindings.putMember("client", new ScriptHttpClient(asyncScriptExecutor, context, client));
+    private void addContextBinding(ServerRequest request, ContextWrapper contextWrapper) {
+        Value bindings = contextWrapper.getContext().getBindings(JS_LANGUAGE_TYPE);
+        bindings.putMember("client", new ScriptHttpClient(contextWrapper, client));
         bindings.putMember("config", new ScriptConfig(request.headers()));
-        return context;
-    }
-
-    private Source createSource(String script) {
-        try {
-            return Source.newBuilder(AsyncScriptExecutor.JS_LANGUAGE_TYPE, script, "script")
-                    .cached(true)
-                    .build();
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to read and parse script", e);
-        }
     }
 
     public Mono<ServerResponse> executeScript(ServerRequest request) {
         return request
                 .bodyToMono(String.class)
-                .flatMap(script -> asyncScriptExecutor.runScript(createSource(script), () -> createContext(request)))
+                .flatMap(script -> asyncScriptExecutor.runScript(
+                        script,
+                        contextWrapper -> addContextBinding(request, contextWrapper)))
                 .flatMap(response -> ServerResponse
                         .ok()
                         .contentType(MediaType.APPLICATION_JSON)

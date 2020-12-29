@@ -3,14 +3,18 @@ package net.voldrich.test.graal.script;
 import lombok.extern.slf4j.Slf4j;
 import net.voldrich.test.graal.api.ScriptExecutionException;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
 
-import java.util.function.Supplier;
+import java.io.IOException;
+import java.time.ZoneId;
+import java.util.function.Consumer;
+
+import static net.voldrich.test.graal.script.ScriptUtils.stringifyToString;
 
 @Component
 @Slf4j
@@ -18,15 +22,31 @@ public class AsyncScriptExecutor {
 
     public static final String JS_LANGUAGE_TYPE = "js";
 
+    private static final Engine engine = Engine.create();
+
     private static final ScriptSchedulers scriptSchedulers = new ScriptSchedulers();
 
-    public Mono<String> runScript(Source source, Supplier<Context> contextSupplier) {
+    public Mono<String> runScript(String script, Consumer<ContextWrapper> contextDecorator) {
+        return runScript(parseScript(script), contextDecorator);
+    }
+
+    public Mono<String> runScript(Source source, Consumer<ContextWrapper> contextDecorator) {
         Scheduler scheduler = scriptSchedulers.getNextScheduler();
         return Mono.using(
-                () -> createNewContext(source, contextSupplier, scheduler),
+                () -> createNewContext(source, contextDecorator, scheduler),
                 this::evaluateAndExecuteScript,
                 contextWrapper -> closeContext(contextWrapper, scheduler)
         ).subscribeOn(scheduler);
+    }
+
+    public Source parseScript(String script) {
+        try {
+            return Source.newBuilder(JS_LANGUAGE_TYPE, script, "script")
+                    .cached(true)
+                    .build();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to parse script", e);
+        }
     }
 
     private Mono<String> evaluateAndExecuteScript(ContextWrapper contextWrapper) {
@@ -48,7 +68,7 @@ public class AsyncScriptExecutor {
 
         return functionExecution
                 .flatMap(response -> resolvePromise(response, contextWrapper))
-                .map(value -> ScriptUtils.stringifyToString(contextWrapper.getContext(), value));
+                .map(value -> stringifyToString(contextWrapper.getContext(), value));
     }
 
     private Mono<Object> resolvePromise(Object response, ContextWrapper contextWrapper) {
@@ -67,30 +87,6 @@ public class AsyncScriptExecutor {
             }
         }
         return Mono.just(response);
-    }
-
-    public Value wrapMonoInPromise(Context context, Mono<?> operation, String description) {
-        return ScriptUtils.constructPromise(context).newInstance((ProxyExecutable) arguments -> {
-            Value resolve = arguments[0];
-            Value reject = arguments[1];
-
-            // Operation result needs to be published on a thread that executed the script.
-            // This ensures that one particular script code is always executed on the same thread
-            // and we don't need to manage context.enter and context.leave.
-            operation.publishOn(scriptSchedulers.getSchedulerBoundToContext(context))
-                    .subscribe(
-                            result -> executeAndIgnoreClosed(resolve, result, description + " succeeded"),
-                            error -> executeAndIgnoreClosed(reject, error, description + " failed"));
-            return null;
-        });
-    }
-
-    private void executeAndIgnoreClosed(Value fnc, Object argument, String msg) {
-        try {
-            fnc.executeVoid(argument);
-        } catch (Exception ex) {
-            log.warn("Exception when executing Async operation {} with argument: {}", msg, argument.toString());
-        }
     }
 
     private Throwable convertError(Object error) {
@@ -116,14 +112,20 @@ public class AsyncScriptExecutor {
         }
     }
 
-    private ContextWrapper createNewContext(Source source, Supplier<Context> contextSupplier, Scheduler scheduler) {
-        Context context = contextSupplier.get();
-        scriptSchedulers.bindContext(context, scheduler);
-        return new ContextWrapper(context, source, scheduler);
+    private ContextWrapper createNewContext(Source source,
+                                            Consumer<ContextWrapper> contextDecorator,
+                                            Scheduler scheduler) {
+        Context.Builder contextBuilder = Context.newBuilder(JS_LANGUAGE_TYPE)
+                .engine(engine)
+                .timeZone(ZoneId.of("UTC"));
+
+        Context context = contextBuilder.build();
+        ContextWrapper contextWrapper = new ContextWrapper(context, source, scheduler);
+        contextDecorator.accept(contextWrapper);
+        return contextWrapper;
     }
 
     private void closeContext(ContextWrapper contextWrapper, Scheduler scheduler) {
-        scriptSchedulers.unbindContext(contextWrapper.getContext());
         // this looks strange, if we would call it immediately then it would result in failed Promise due to context
         // being closed while evaluating the Promise handler.
         // AsyncScriptExecutor.wrapMonoInPromise subscribe call which invokes promise handler basically bubbles to

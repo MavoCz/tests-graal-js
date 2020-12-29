@@ -1,9 +1,8 @@
 package net.voldrich.test.graal.api;
 
 import lombok.extern.slf4j.Slf4j;
-import net.voldrich.test.graal.script.AsyncScriptExecutor;
+import net.voldrich.test.graal.script.ContextWrapper;
 import net.voldrich.test.graal.script.ScriptUtils;
-import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
@@ -21,13 +20,10 @@ public class ScriptHttpClient {
 
     private final WebClient client;
 
-    private final AsyncScriptExecutor asyncScriptExecutor;
+    private final ContextWrapper contextWrapper;
 
-    private final Context context;
-
-    public ScriptHttpClient(AsyncScriptExecutor asyncScriptExecutor, Context context, WebClient client) {
-        this.asyncScriptExecutor = asyncScriptExecutor;
-        this.context = context;
+    public ScriptHttpClient(ContextWrapper contextWrapper, WebClient client) {
+        this.contextWrapper = contextWrapper;
         this.client = client;
     }
 
@@ -64,13 +60,13 @@ public class ScriptHttpClient {
             if (data.isString()) {
                 requestBodySpec.bodyValue(data.toString());
             } else {
-                requestBodySpec.bodyValue(ScriptUtils.stringify(context, data).toString());
+                requestBodySpec.bodyValue(ScriptUtils.stringify(contextWrapper.getContext(), data).toString());
             }
         }
 
         Mono<ScriptHttpResponse> operation = requestBodySpec.exchangeToMono(this::handleResponse)
                 .doOnSubscribe(subscription -> log.info("Starting request {}", url));
-        return asyncScriptExecutor.wrapMonoInPromise(context, operation, "http request " + url);
+        return contextWrapper.wrapMonoInPromise(operation, "HTTP request " + url);
 
     }
 
@@ -78,7 +74,7 @@ public class ScriptHttpClient {
         log.info("Request finished with status {}", response.statusCode());
         if (response.statusCode().is2xxSuccessful()) {
             return response.bodyToMono(String.class)
-                    .map(body -> new ScriptHttpResponse(context, response, body));
+                    .map(body -> new ScriptHttpResponse(contextWrapper.getContext(), response, body));
         } else if (response.statusCode().is4xxClientError()) {
             return response.createException().flatMap(Mono::error);
         } else {

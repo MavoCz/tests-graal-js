@@ -28,20 +28,15 @@ public class ScriptUtils {
     }
 
     public static Value stringify(Context context, Object data) {
-        try {
-            return getJSONMember(context).getMember("stringify").execute(data);
-        } catch (Exception e) {
-            log.warn("Failed to stringify", e);
-            throw e;
-        }
+        return getJSONMember(context).getMember("stringify").execute(data);
     }
 
     public static String stringifyToString(Context context, Object data) {
         try {
-            return getJSONMember(context).getMember("stringify").execute(data).toString();
+            return stringify(context, data).toString();
         } catch (Exception e) {
-            log.warn("Failed to stringify", e);
-            return "";
+            log.warn("Failed to stringify object", e);
+            throw new RuntimeException("Failed to stringify object");
         }
     }
 
