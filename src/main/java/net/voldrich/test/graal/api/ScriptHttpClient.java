@@ -70,7 +70,7 @@ public class ScriptHttpClient {
 
         Mono<ScriptHttpResponse> operation = requestBodySpec.exchangeToMono(this::handleResponse)
                 .doOnSubscribe(subscription -> log.info("Starting request {}", url));
-        return asyncScriptExecutor.wrapMonoInPromise(context, operation);
+        return asyncScriptExecutor.wrapMonoInPromise(context, operation, "http request " + url);
 
     }
 

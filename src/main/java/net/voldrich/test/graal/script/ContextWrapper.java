@@ -1,11 +1,12 @@
 package net.voldrich.test.graal.script;
 
+import lombok.extern.slf4j.Slf4j;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import reactor.core.scheduler.Scheduler;
 
-
+@Slf4j
 public class ContextWrapper implements AutoCloseable {
 
     private final Context context;
@@ -37,9 +38,18 @@ public class ContextWrapper implements AutoCloseable {
 
     @Override
     public void close() {
+        this.close(false);
+    }
+
+    public void forceClose() {
+        this.close(true);
+    }
+
+    public void close(boolean force) {
         if (!closed) {
+            log.debug("Closing context, force: {}", force);
             this.closed = true;
-            this.context.close(true);
+            this.context.close(force);
         }
     }
 

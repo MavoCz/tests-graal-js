@@ -22,16 +22,17 @@ public class AsyncScriptExecutor {
 
     public Mono<String> runScript(Source source, Supplier<Context> contextSupplier) {
         Scheduler scheduler = scriptSchedulers.getNextScheduler();
-        return Mono.using(() -> createNewContext(source, contextSupplier, scheduler),
+        return Mono.using(
+                () -> createNewContext(source, contextSupplier, scheduler),
                 this::evaluateAndExecuteScript,
-                this::closeContext
+                contextWrapper -> closeContext(contextWrapper, scheduler)
         ).subscribeOn(scheduler);
     }
 
     private Mono<String> evaluateAndExecuteScript(ContextWrapper contextWrapper) {
         Mono<Object> functionExecution = Mono.create(sink -> {
-            //sink.onCancel(contextWrapper::close);
-            log.info("Evaluating script");
+            sink.onCancel(contextWrapper::forceClose);
+            log.debug("Evaluating script");
             try {
                 Value response = contextWrapper.eval();
 
@@ -47,7 +48,7 @@ public class AsyncScriptExecutor {
 
         return functionExecution
                 .flatMap(response -> resolvePromise(response, contextWrapper))
-                .map(value -> ScriptUtils.stringify(contextWrapper.getContext(), value).toString());
+                .map(value -> ScriptUtils.stringifyToString(contextWrapper.getContext(), value));
     }
 
     private Mono<Object> resolvePromise(Object response, ContextWrapper contextWrapper) {
@@ -55,7 +56,7 @@ public class AsyncScriptExecutor {
             Value promise = (Value) response;
             if (promise.getMetaObject().getMetaSimpleName().equals("Promise")) {
                 return Mono.create(sink -> {
-                    //sink.onCancel(contextWrapper::close);
+                    sink.onCancel(contextWrapper::forceClose);
                     PromiseConsumer<Object> resolve = new PromiseConsumer<>(sink::success);
                     PromiseConsumer<Object> reject = new PromiseConsumer<>(error -> sink.error(convertError(error)));
 
@@ -68,7 +69,7 @@ public class AsyncScriptExecutor {
         return Mono.just(response);
     }
 
-    public Value wrapMonoInPromise(Context context, Mono<?> operation) {
+    public Value wrapMonoInPromise(Context context, Mono<?> operation, String description) {
         return ScriptUtils.constructPromise(context).newInstance((ProxyExecutable) arguments -> {
             Value resolve = arguments[0];
             Value reject = arguments[1];
@@ -77,9 +78,19 @@ public class AsyncScriptExecutor {
             // This ensures that one particular script code is always executed on the same thread
             // and we don't need to manage context.enter and context.leave.
             operation.publishOn(scriptSchedulers.getSchedulerBoundToContext(context))
-                    .subscribe(resolve::executeVoid, reject::executeVoid);
+                    .subscribe(
+                            result -> executeAndIgnoreClosed(resolve, result, description + " succeeded"),
+                            error -> executeAndIgnoreClosed(reject, error, description + " failed"));
             return null;
         });
+    }
+
+    private void executeAndIgnoreClosed(Value fnc, Object argument, String msg) {
+        try {
+            fnc.executeVoid(argument);
+        } catch (Exception ex) {
+            log.warn("Exception when executing Async operation {} with argument: {}", msg, argument.toString());
+        }
     }
 
     private Throwable convertError(Object error) {
@@ -111,8 +122,12 @@ public class AsyncScriptExecutor {
         return new ContextWrapper(context, source, scheduler);
     }
 
-    private void closeContext(ContextWrapper contextWrapper) {
+    private void closeContext(ContextWrapper contextWrapper, Scheduler scheduler) {
         scriptSchedulers.unbindContext(contextWrapper.getContext());
-        contextWrapper.close();
+        // this looks strange, if we would call it immediately then it would result in failed Promise due to context
+        // being closed while evaluating the Promise handler.
+        // AsyncScriptExecutor.wrapMonoInPromise subscribe call which invokes promise handler basically bubbles to
+        // using.close operator, which closes the context which is evaluating the promise belonging to that context.
+        scheduler.schedule(() -> contextWrapper.close(false));
     }
 }

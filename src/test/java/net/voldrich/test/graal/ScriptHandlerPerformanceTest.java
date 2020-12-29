@@ -30,7 +30,7 @@ public class ScriptHandlerPerformanceTest extends BaseWiremockTest {
         wireMock.stubFor(get(urlEqualTo("/company/ceo"))
                 .willReturn(aResponse()
                         .withStatus(200)
-                        .withFixedDelay(100)
+                        .withFixedDelay(50)
                         .withBody(fromResource("responses/ceo-list.json"))));
 
         Scheduler requestScheduler = Schedulers.fromExecutor(Executors.newFixedThreadPool(10));
@@ -40,7 +40,7 @@ public class ScriptHandlerPerformanceTest extends BaseWiremockTest {
                 .flatMap(integer -> Mono.fromSupplier(this::doScriptRequest).subscribeOn(requestScheduler))
                 .blockLast();
 
-        Flux.range(1, 1000)
+        Flux.range(1, 10000)
                 .flatMap(integer -> Mono.fromSupplier(this::doScriptRequestWithTimer).subscribeOn(requestScheduler))
                 .blockLast();
 

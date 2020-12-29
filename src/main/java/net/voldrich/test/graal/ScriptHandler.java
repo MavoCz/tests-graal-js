@@ -2,6 +2,7 @@ package net.voldrich.test.graal;
 
 import lombok.extern.slf4j.Slf4j;
 import net.voldrich.test.graal.api.ScriptConfig;
+import net.voldrich.test.graal.api.ScriptExecutionException;
 import net.voldrich.test.graal.api.ScriptHttpClient;
 import net.voldrich.test.graal.script.AsyncScriptExecutor;
 import org.graalvm.polyglot.*;
@@ -68,18 +69,25 @@ public class ScriptHandler {
                         .contentType(MediaType.APPLICATION_JSON)
                         .body(BodyInserters.fromValue(response)))
                 .onErrorResume(PolyglotException.class, this::handleScriptException)
+                .onErrorResume(ScriptExecutionException.class, this::handleScriptExecutionException)
                 .onErrorResume(WebClientResponseException.class, exception -> Mono.error(new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Script execution failed " + exception.toString(), exception)));
     }
 
+    private Mono<? extends ServerResponse> handleScriptExecutionException(ScriptExecutionException exception) {
+        return Mono.error(new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                exception.getMessage(),
+                exception));
+    }
 
     private Mono<? extends ServerResponse> handleScriptException(PolyglotException exception) {
         String scriptStack = StreamSupport.stream(exception.getPolyglotStackTrace().spliterator(), false)
                 .filter(PolyglotException.StackFrame::isGuestFrame)
                 .map(PolyglotException.StackFrame::toString)
                 .collect(Collectors.joining("\n"));
-        log.warn("Script execution failed {} near {}", exception.toString(), scriptStack);
+        log.debug("Script execution failed {} near {}", exception.toString(), scriptStack);
         return Mono.error(new ResponseStatusException(
                 HttpStatus.BAD_REQUEST,
                 "Script execution failed: " + exception.getMessage(),
