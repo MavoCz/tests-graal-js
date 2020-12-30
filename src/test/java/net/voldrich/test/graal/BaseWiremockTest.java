@@ -55,4 +55,10 @@ public abstract class BaseWiremockTest {
                 .body(BodyInserters.fromValue(fromResource(scriptPath)))
                 .exchange();
     }
+
+    protected WebTestClient.ResponseSpec doScriptRequestAndCheckOk(String scriptPath) {
+        return doScriptRequest(scriptPath)
+                .expectStatus()
+                .is2xxSuccessful();
+    }
 }

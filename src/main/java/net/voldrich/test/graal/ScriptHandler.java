@@ -2,6 +2,7 @@ package net.voldrich.test.graal;
 
 import lombok.extern.slf4j.Slf4j;
 import net.voldrich.test.graal.api.ScriptConfig;
+import net.voldrich.test.graal.api.ScriptTimeout;
 import net.voldrich.test.graal.script.ScriptExecutionException;
 import net.voldrich.test.graal.api.ScriptHttpClient;
 import net.voldrich.test.graal.dto.ScriptErrorResponseDto;
@@ -37,6 +38,7 @@ public class ScriptHandler {
         Value bindings = contextWrapper.getContext().getBindings(JS_LANGUAGE_TYPE);
         bindings.putMember("client", new ScriptHttpClient(contextWrapper, client));
         bindings.putMember("config", new ScriptConfig(request.headers()));
+        bindings.putMember("timeout", new ScriptTimeout(contextWrapper));
     }
 
     public Mono<ServerResponse> executeScript(ServerRequest request) {

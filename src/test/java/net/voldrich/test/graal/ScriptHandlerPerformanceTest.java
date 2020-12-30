@@ -12,6 +12,7 @@ import reactor.core.scheduler.Schedulers;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
@@ -33,34 +34,37 @@ public class ScriptHandlerPerformanceTest extends BaseWiremockTest {
                         .withFixedDelay(50)
                         .withBody(fromResource("responses/ceo-list.json"))));
 
-        Scheduler requestScheduler = Schedulers.fromExecutor(Executors.newFixedThreadPool(10));
-
         // warmup
-        Flux.range(1, 100)
-                .flatMap(integer -> Mono.fromSupplier(this::doScriptRequest).subscribeOn(requestScheduler))
-                .blockLast();
+        runScript("scripts/test-http-get.js", 10, 100, 1000);
+    }
 
-        Flux.range(1, 10000)
-                .flatMap(integer -> Mono.fromSupplier(this::doScriptRequestWithTimer).subscribeOn(requestScheduler))
-                .blockLast();
+    @Test
+    void testScriptWithTimeout() {
+        runScript("scripts/test-script-timeout.js", 10, 100, 1000);
+    }
+
+    private void runScript(String scriptPath, int threadCount, int warmupRequestCount, int requestCount) {
+        Scheduler requestScheduler = Schedulers.fromExecutor(Executors.newFixedThreadPool(threadCount));
+
+        runScript(() -> doScriptRequestAndCheckOk(scriptPath), warmupRequestCount, requestScheduler);
+        runScript(() -> doScriptRequestWithTimer(scriptPath), requestCount, requestScheduler);
 
         ConsoleReporter reporter = ConsoleReporter.forRegistry(metrics)
                 .convertRatesTo(TimeUnit.MILLISECONDS)
                 .convertDurationsTo(TimeUnit.MILLISECONDS)
                 .build();
         reporter.report();
-
     }
 
-    private WebTestClient.ResponseSpec doScriptRequestWithTimer() {
+    private void runScript(Supplier<WebTestClient.ResponseSpec> scriptSupplier, int requestCount, Scheduler requestScheduler) {
+        Flux.range(1, requestCount)
+                .flatMap(integer -> Mono.fromSupplier(scriptSupplier).subscribeOn(requestScheduler))
+                .blockLast();
+    }
+
+    private WebTestClient.ResponseSpec doScriptRequestWithTimer(String scriptPath) {
         try (final Timer.Context context = requestTimer.time()) {
-            return doScriptRequest();
+            return doScriptRequestAndCheckOk(scriptPath);
         }
-    }
-
-    protected WebTestClient.ResponseSpec doScriptRequest() {
-        return doScriptRequest("scripts/test-http-get.js")
-                .expectStatus()
-                .is2xxSuccessful();
     }
 }
