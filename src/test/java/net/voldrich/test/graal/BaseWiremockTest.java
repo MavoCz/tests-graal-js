@@ -22,7 +22,7 @@ import java.nio.file.Files;
 
 @ExtendWith(WiremockResolver.class)
 @WebFluxTest(controllers = ScriptServerRouter.class)
-@Import({ScriptHandler.class, AsyncScriptExecutor.class})
+@Import({ScriptHandler.class})
 @Slf4j
 public abstract class BaseWiremockTest {
     protected WireMockServer wireMock;

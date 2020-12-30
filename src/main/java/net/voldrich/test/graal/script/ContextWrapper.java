@@ -8,18 +8,23 @@ import org.graalvm.polyglot.proxy.ProxyExecutable;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
 
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.Charset;
+
 @Slf4j
 public class ContextWrapper implements AutoCloseable {
 
     private final Context context;
     private final Source source;
     private final Scheduler scheduler;
+    private ByteArrayOutputStream scriptOutputStream;
     private boolean closed = false;
 
-    public ContextWrapper(Context context, Source source, Scheduler scheduler) {
+    public ContextWrapper(Context context, Source source, Scheduler scheduler, ByteArrayOutputStream outputStream) {
         this.context = context;
         this.source = source;
         this.scheduler = scheduler;
+        this.scriptOutputStream = outputStream;
     }
 
     public Context getContext() {
@@ -80,4 +85,7 @@ public class ContextWrapper implements AutoCloseable {
     }
 
 
+    public String getScriptOutput() {
+        return scriptOutputStream.toString(Charset.defaultCharset());
+    }
 }

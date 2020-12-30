@@ -32,12 +32,7 @@ public class ScriptUtils {
     }
 
     public static String stringifyToString(Context context, Object data) {
-        try {
-            return stringify(context, data).toString();
-        } catch (Exception e) {
-            log.warn("Failed to stringify object", e);
-            throw new RuntimeException("Failed to stringify object");
-        }
+        return stringify(context, data).toString();
     }
 
     public static Value stringifyPretty(Context context, Value data) {

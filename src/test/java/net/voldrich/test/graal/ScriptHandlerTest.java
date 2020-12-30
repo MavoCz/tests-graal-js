@@ -104,7 +104,7 @@ class ScriptHandlerTest extends BaseWiremockTest {
                 .expectStatus()
                 .is4xxClientError()
                 .expectBody()
-                .jsonPath("$.message").value(Matchers.startsWith("Script execution failed: SyntaxError: script:2:30 Expected"));
+                .jsonPath("$.message").value(Matchers.startsWith("org.graalvm.polyglot.PolyglotException: SyntaxError: script:2:30 Expected"));
     }
 
     @Test
