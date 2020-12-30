@@ -53,7 +53,8 @@ public class ContextWrapper implements AutoCloseable {
     }
 
     public Value wrapMonoInPromise(Mono<?> operation, String description) {
-        return ScriptUtils.constructPromise(context).newInstance((ProxyExecutable) arguments -> {
+        String currentJsStack = ScriptUtils.getCurrentJsStack(context);
+        return ScriptUtils.getGlobalPromise(context).newInstance((ProxyExecutable) arguments -> {
             Value resolve = arguments[0];
             Value reject = arguments[1];
 
@@ -62,18 +63,18 @@ public class ContextWrapper implements AutoCloseable {
             // and we don't need to manage context.enter and context.leave.
             operation.publishOn(scheduler)
                     .subscribe(
-                            result -> executeAndIgnoreClosed(resolve, result, description + " succeeded"),
-                            error -> executeAndIgnoreClosed(reject, error, description + " failed"));
+                            resolve::executeVoid,
+                            error -> addStackToException(reject, error, description + "\n" + currentJsStack));
             return null;
         });
     }
 
-    private void executeAndIgnoreClosed(Value fnc, Object argument, String msg) {
-        try {
-            fnc.executeVoid(argument);
-        } catch (Exception ex) {
-            log.warn("Exception when executing Async operation {} with argument: {}", msg, argument.toString());
+    private void addStackToException(Value fnc, Object argument, String stack) {
+        if (argument instanceof Throwable) {
+            argument = new ScriptExecutionException(this, (Throwable) argument, stack);
         }
+
+        fnc.executeVoid(argument);
     }
 
     public void close(boolean force) {

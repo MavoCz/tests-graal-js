@@ -39,8 +39,13 @@ public class ScriptUtils {
         return getJSONMember(context).getMember("stringify").execute(data, null, 2);
     }
 
-    public static Value constructPromise(Context context) {
+    public static Value getGlobalPromise(Context context) {
         return getGlobalMember(context, "Promise");
+    }
+
+    public static String getCurrentJsStack(Context context) {
+        Value error = getGlobalMember(context, "Error").newInstance();
+        return error.getMember("stack").toString();
     }
 
     public static void logValue(Value jsValue, int indent) {

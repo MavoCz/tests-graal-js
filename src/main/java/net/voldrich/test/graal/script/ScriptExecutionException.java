@@ -1,7 +1,6 @@
 package net.voldrich.test.graal.script;
 
 import lombok.Getter;
-import net.voldrich.test.graal.script.ContextWrapper;
 
 @Getter
 public class ScriptExecutionException extends RuntimeException {
@@ -12,6 +11,13 @@ public class ScriptExecutionException extends RuntimeException {
 
     private final String stack;
 
+    public ScriptExecutionException(ContextWrapper contextWrapper, String message) {
+        super(message);
+        this.source = "unknown";
+        this.stack = "";
+        this.scriptOutput = contextWrapper.getScriptOutput();
+    }
+
     public ScriptExecutionException(ContextWrapper contextWrapper, String message, String stack) {
         super(message);
         this.source = "script";
@@ -20,16 +26,14 @@ public class ScriptExecutionException extends RuntimeException {
     }
 
     public ScriptExecutionException(ContextWrapper contextWrapper, Throwable hostException) {
+        this(contextWrapper, hostException, "");
+    }
+
+    public ScriptExecutionException(ContextWrapper contextWrapper, Throwable hostException, String stack) {
         super(hostException);
         this.source = "host";
-        this.stack = "";
+        this.stack = stack;
         this.scriptOutput = contextWrapper.getScriptOutput();
     }
 
-    public ScriptExecutionException(ContextWrapper contextWrapper, String message) {
-        super(message);
-        this.source = "unknown";
-        this.stack = "";
-        this.scriptOutput = contextWrapper.getScriptOutput();
-    }
 }

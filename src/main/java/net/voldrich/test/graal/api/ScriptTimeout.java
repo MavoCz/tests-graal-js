@@ -20,7 +20,7 @@ public class ScriptTimeout {
     @HostAccess.Export
     public Value ms(int timeoutMs, Value response) {
         Mono<Value> operation = Mono.delay(Duration.ofMillis(timeoutMs)).then(Mono.just(response));
-        return contextWrapper.wrapMonoInPromise(operation, "Timeout for " + timeoutMs);
+        return contextWrapper.wrapMonoInPromise(operation, "timeout.ms for " + timeoutMs);
     }
 
 }

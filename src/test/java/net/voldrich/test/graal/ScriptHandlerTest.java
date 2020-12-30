@@ -95,7 +95,10 @@ class ScriptHandlerTest extends BaseWiremockTest {
     void testScriptWithHttpRequest404() {
         doScriptRequest("scripts/test-http-get-404.js")
                 .expectStatus()
-                .is4xxClientError();
+                .is4xxClientError()
+                .expectBody()
+                .jsonPath("$.message").value(Matchers.startsWith("org.springframework.web.reactive.function.client.WebClientResponseException$NotFound: 404 Not Found"))
+                .jsonPath("$.stack").value(Matchers.endsWith("at fetch (script:2:34)"));
     }
 
     @Test

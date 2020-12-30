@@ -66,7 +66,7 @@ public class ScriptHttpClient {
 
         Mono<ScriptHttpResponse> operation = requestBodySpec.exchangeToMono(this::handleResponse)
                 .doOnSubscribe(subscription -> log.info("Starting request {}", url));
-        return contextWrapper.wrapMonoInPromise(operation, "HTTP request " + url);
+        return contextWrapper.wrapMonoInPromise(operation, "HTTP " + httpMethod.name());
 
     }
 
