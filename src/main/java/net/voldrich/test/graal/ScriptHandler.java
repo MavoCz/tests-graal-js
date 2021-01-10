@@ -3,20 +3,18 @@ package net.voldrich.test.graal;
 import lombok.extern.slf4j.Slf4j;
 import net.voldrich.test.graal.api.ScriptConfig;
 import net.voldrich.test.graal.api.ScriptTimeout;
+import net.voldrich.test.graal.script.ScriptContext;
 import net.voldrich.test.graal.script.ScriptExecutionException;
 import net.voldrich.test.graal.api.ScriptHttpClient;
 import net.voldrich.test.graal.dto.ScriptErrorResponseDto;
 import net.voldrich.test.graal.script.AsyncScriptExecutor;
-import net.voldrich.test.graal.script.ContextWrapper;
 import org.graalvm.polyglot.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
-import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 
 import static net.voldrich.test.graal.script.AsyncScriptExecutor.JS_LANGUAGE_TYPE;
@@ -34,7 +32,7 @@ public class ScriptHandler {
                 .build();
     }
 
-    private void addContextBinding(ServerRequest request, ContextWrapper contextWrapper) {
+    private void addContextBinding(ServerRequest request, ScriptContext contextWrapper) {
         Value bindings = contextWrapper.getContext().getBindings(JS_LANGUAGE_TYPE);
         bindings.putMember("client", new ScriptHttpClient(contextWrapper, client));
         bindings.putMember("config", new ScriptConfig(request.headers()));

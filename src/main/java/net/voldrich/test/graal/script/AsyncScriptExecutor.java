@@ -37,11 +37,11 @@ public class AsyncScriptExecutor {
                 : new ScriptSchedulers();
     }
 
-    public Mono<String> executeScript(String script, Consumer<ContextWrapper> contextDecorator) {
+    public Mono<String> executeScript(String script, Consumer<ScriptContext> contextDecorator) {
         return executeScript(parseScript(script), contextDecorator);
     }
 
-    public Mono<String> executeScript(Source source, Consumer<ContextWrapper> contextDecorator) {
+    public Mono<String> executeScript(Source source, Consumer<ScriptContext> contextDecorator) {
         Scheduler scheduler = scriptSchedulers.getNextScheduler();
         return Mono.using(
                 () -> createNewContext(source, contextDecorator, scheduler),
@@ -130,7 +130,7 @@ public class AsyncScriptExecutor {
     }
 
     private ContextWrapper createNewContext(Source source,
-                                            Consumer<ContextWrapper> contextDecorator,
+                                            Consumer<ScriptContext> contextDecorator,
                                             Scheduler scheduler) {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         Context.Builder contextBuilder = Context.newBuilder(JS_LANGUAGE_TYPE)
@@ -150,7 +150,7 @@ public class AsyncScriptExecutor {
         // being closed while evaluating the Promise handler.
         // AsyncScriptExecutor.wrapMonoInPromise subscribe call which invokes promise handler basically bubbles to
         // using.close operator, which closes the context which is evaluating the promise belonging to that context.
-        contextWrapper.getScheduler().schedule(() -> contextWrapper.close(false));
+        contextWrapper.getScheduler().schedule(contextWrapper::close);
     }
 
     @Getter
@@ -159,7 +159,7 @@ public class AsyncScriptExecutor {
     public static class Builder {
         private Engine engine;
 
-        ScriptSchedulers scriptSchedulers;
+        private ScriptSchedulers scriptSchedulers;
 
         public AsyncScriptExecutor build() {
             return new AsyncScriptExecutor(this);

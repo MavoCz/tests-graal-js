@@ -1,5 +1,5 @@
 (async function test() {
-    return await timeout.ms(100, [
+    return await timeout.blockSleep(100, [
         {
             "id": 1,
             "name": "Steve Jobs"

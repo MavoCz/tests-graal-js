@@ -11,29 +11,29 @@ public class ScriptExecutionException extends RuntimeException {
 
     private final String stack;
 
-    public ScriptExecutionException(ContextWrapper contextWrapper, String message) {
+    public ScriptExecutionException(ScriptContext scriptContext, String message) {
         super(message);
         this.source = "unknown";
         this.stack = "";
-        this.scriptOutput = contextWrapper.getScriptOutput();
+        this.scriptOutput = scriptContext.getScriptOutput();
     }
 
-    public ScriptExecutionException(ContextWrapper contextWrapper, String message, String stack) {
+    public ScriptExecutionException(ScriptContext scriptContext, String message, String stack) {
         super(message);
         this.source = "script";
         this.stack = stack;
-        this.scriptOutput = contextWrapper.getScriptOutput();
+        this.scriptOutput = scriptContext.getScriptOutput();
     }
 
-    public ScriptExecutionException(ContextWrapper contextWrapper, Throwable hostException) {
-        this(contextWrapper, hostException, "");
+    public ScriptExecutionException(ScriptContext scriptContext, Throwable hostException) {
+        this(scriptContext, hostException, "");
     }
 
-    public ScriptExecutionException(ContextWrapper contextWrapper, Throwable hostException, String stack) {
+    public ScriptExecutionException(ScriptContext scriptContext, Throwable hostException, String stack) {
         super(hostException);
         this.source = "host";
         this.stack = stack;
-        this.scriptOutput = contextWrapper.getScriptOutput();
+        this.scriptOutput = scriptContext.getScriptOutput();
     }
 
 }

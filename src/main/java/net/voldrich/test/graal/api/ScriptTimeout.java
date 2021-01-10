@@ -1,7 +1,8 @@
 package net.voldrich.test.graal.api;
 
 import lombok.extern.slf4j.Slf4j;
-import net.voldrich.test.graal.script.ContextWrapper;
+import net.voldrich.test.graal.script.ScriptContext;
+import net.voldrich.test.graal.script.ScriptExecutionException;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 import reactor.core.publisher.Mono;
@@ -11,16 +12,26 @@ import java.time.Duration;
 @Slf4j
 public class ScriptTimeout {
 
-    private ContextWrapper contextWrapper;
+    private ScriptContext scriptContext;
 
-    public ScriptTimeout(ContextWrapper contextWrapper) {
-        this.contextWrapper = contextWrapper;
+    public ScriptTimeout(ScriptContext scriptContext) {
+        this.scriptContext = scriptContext;
     }
 
     @HostAccess.Export
     public Value ms(int timeoutMs, Value response) {
-        Mono<Value> operation = Mono.delay(Duration.ofMillis(timeoutMs)).then(Mono.just(response));
-        return contextWrapper.wrapMonoInPromise(operation, "timeout.ms for " + timeoutMs);
+        Mono<Value> operation = Mono.delay(Duration.ofMillis(timeoutMs)).thenReturn(response);
+        return scriptContext.executeAsPromise(operation, "timeout.ms for " + timeoutMs);
+    }
+
+    @HostAccess.Export
+    public Value blockSleep(int timeoutMs, Value response) {
+        try {
+            Thread.sleep(timeoutMs);
+            return response;
+        } catch (InterruptedException e) {
+            throw new ScriptExecutionException(scriptContext, "Timeout interrupted");
+        }
     }
 
 }

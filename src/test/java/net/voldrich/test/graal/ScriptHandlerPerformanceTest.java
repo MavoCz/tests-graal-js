@@ -16,6 +16,7 @@ import java.util.function.Supplier;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static net.voldrich.test.graal.ScriptTestUtils.fromResource;
 
 @Disabled
 public class ScriptHandlerPerformanceTest extends BaseWiremockTest {
@@ -40,7 +41,13 @@ public class ScriptHandlerPerformanceTest extends BaseWiremockTest {
 
     @Test
     void testScriptWithTimeout() {
-        runScript("scripts/test-script-timeout.js", 10, 100, 1000);
+        runScript("scripts/test-script-timeout.js", 20, 100, 2000);
+    }
+
+    @Test
+    void testScriptWithSleepBlock() {
+        // to compare timout implemented by blocking the script thread
+        runScript("scripts/test-script-timeout-block.js", 20, 100, 20000);
     }
 
     private void runScript(String scriptPath, int threadCount, int warmupRequestCount, int requestCount) {

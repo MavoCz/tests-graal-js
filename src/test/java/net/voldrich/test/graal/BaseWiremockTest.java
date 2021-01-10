@@ -20,6 +20,8 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 
+import static net.voldrich.test.graal.ScriptTestUtils.fromResource;
+
 @ExtendWith(WiremockResolver.class)
 @WebFluxTest(controllers = ScriptServerRouter.class)
 @Import({ScriptHandler.class})
@@ -36,15 +38,6 @@ public abstract class BaseWiremockTest {
     @BeforeEach
     void setUp(@WiremockResolver.Wiremock WireMockServer wireMock) {
         this.wireMock = wireMock;
-    }
-
-    protected String fromResource(String scriptPath) {
-        try {
-            File resource = new ClassPathResource(scriptPath).getFile();
-            return new String(Files.readAllBytes(resource.toPath()));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     protected WebTestClient.ResponseSpec doScriptRequest(String scriptPath) {

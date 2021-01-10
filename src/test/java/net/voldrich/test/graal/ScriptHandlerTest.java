@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static net.voldrich.test.graal.ScriptTestUtils.fromResource;
 
 class ScriptHandlerTest extends BaseWiremockTest {
 
