@@ -16,7 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
 // TODO implement Timeout when script is infinite and never ends ({response}) => new Promise(() => "Neverending story")
 // TODO implement Statement limits
 @Slf4j
-class ContextWrapper implements ScriptContext {
+class ScriptContextImpl implements ScriptContext {
 
     private final Context context;
     private final Source source;
@@ -27,7 +27,7 @@ class ContextWrapper implements ScriptContext {
     /** Map of currently running async operations in this context. These are cancelled if context is closed. */
     private final ConcurrentHashMap<Subscription, PromiseMonoSubscriber> runningOperationMap = new ConcurrentHashMap<>();
 
-    public ContextWrapper(Context context, Source source, Scheduler scheduler, ByteArrayOutputStream outputStream) {
+    public ScriptContextImpl(Context context, Source source, Scheduler scheduler, ByteArrayOutputStream outputStream) {
         this.context = context;
         this.source = source;
         this.scheduler = scheduler;

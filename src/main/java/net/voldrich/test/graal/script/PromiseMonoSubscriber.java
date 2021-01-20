@@ -7,7 +7,7 @@ import reactor.core.publisher.BaseSubscriber;
 
 @Slf4j
 public class PromiseMonoSubscriber extends BaseSubscriber<Object> {
-    private final ContextWrapper contextWrapper;
+    private final ScriptContextImpl scriptContextImpl;
     private final Value resolve;
     private final Value reject;
     private final String operationDesc;
@@ -15,8 +15,8 @@ public class PromiseMonoSubscriber extends BaseSubscriber<Object> {
 
     private volatile Subscription subscription;
 
-    public PromiseMonoSubscriber(ContextWrapper contextWrapper, Value resolve, Value reject, String operationDesc, String jsStack) {
-        this.contextWrapper = contextWrapper;
+    public PromiseMonoSubscriber(ScriptContextImpl scriptContextImpl, Value resolve, Value reject, String operationDesc, String jsStack) {
+        this.scriptContextImpl = scriptContextImpl;
         this.resolve = resolve;
         this.reject = reject;
         this.operationDesc = operationDesc;
@@ -27,7 +27,7 @@ public class PromiseMonoSubscriber extends BaseSubscriber<Object> {
     protected void hookOnSubscribe(Subscription subscription) {
         super.hookOnSubscribe(subscription);
         this.subscription = subscription;
-        contextWrapper.registerSubscriber(subscription, this);
+        scriptContextImpl.registerSubscriber(subscription, this);
     }
 
     @Override
@@ -41,9 +41,9 @@ public class PromiseMonoSubscriber extends BaseSubscriber<Object> {
         if (error instanceof ScriptExecutionException) {
             reject.executeVoid(error);
         } else {
-            reject.executeVoid(new ScriptExecutionException(contextWrapper, error, operationDesc + "\n" + jsStack));
+            reject.executeVoid(new ScriptExecutionException(scriptContextImpl, error, operationDesc + "\n" + jsStack));
         }
-        contextWrapper.unregisterSubscriber(subscription);
+        scriptContextImpl.unregisterSubscriber(subscription);
     }
 
     @Override
@@ -53,7 +53,7 @@ public class PromiseMonoSubscriber extends BaseSubscriber<Object> {
 
     @Override
     protected void hookOnComplete() {
-        contextWrapper.unregisterSubscriber(subscription);
+        scriptContextImpl.unregisterSubscriber(subscription);
     }
 
 }

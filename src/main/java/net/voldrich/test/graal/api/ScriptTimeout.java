@@ -12,7 +12,7 @@ import java.time.Duration;
 @Slf4j
 public class ScriptTimeout {
 
-    private ScriptContext scriptContext;
+    private final ScriptContext scriptContext;
 
     public ScriptTimeout(ScriptContext scriptContext) {
         this.scriptContext = scriptContext;

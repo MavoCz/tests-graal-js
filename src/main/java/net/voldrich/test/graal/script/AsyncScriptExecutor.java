@@ -60,12 +60,12 @@ public class AsyncScriptExecutor {
         }
     }
 
-    private Mono<String> evaluateAndExecuteScript(ContextWrapper contextWrapper) {
+    private Mono<String> evaluateAndExecuteScript(ScriptContextImpl scriptContextImpl) {
         Mono<Object> functionExecution = Mono.create(sink -> {
-            sink.onCancel(contextWrapper::forceClose);
+            sink.onCancel(scriptContextImpl::forceClose);
             log.debug("Evaluating script");
             try {
-                Value response = contextWrapper.eval();
+                Value response = scriptContextImpl.eval();
 
                 if (response.canExecute()) {
                     response = response.execute();
@@ -73,31 +73,31 @@ public class AsyncScriptExecutor {
 
                 sink.success(response);
             } catch (Exception e) {
-                sink.error(convertError(e, contextWrapper));
+                sink.error(convertError(e, scriptContextImpl));
             }
         });
 
         return functionExecution
-                .flatMap(response -> resolvePromise(response, contextWrapper))
-                .map(value -> stringifyToString(contextWrapper.getContext(), value));
+                .flatMap(response -> resolvePromise(response, scriptContextImpl))
+                .map(value -> stringifyToString(scriptContextImpl.getContext(), value));
     }
 
-    private Mono<Object> resolvePromise(Object response, ContextWrapper contextWrapper) {
+    private Mono<Object> resolvePromise(Object response, ScriptContextImpl scriptContextImpl) {
         if (response instanceof Value) {
             Value promise = (Value) response;
             if (promise.getMetaObject().getMetaSimpleName().equals("Promise")) {
                 return Mono.create(sink -> {
-                    sink.onCancel(contextWrapper::forceClose);
+                    sink.onCancel(scriptContextImpl::forceClose);
                     try {
                         PromiseConsumer<Object> resolve = new PromiseConsumer<>(sink::success);
                         PromiseConsumer<Object> reject = new PromiseConsumer<>(error ->
-                                sink.error(convertError(error, contextWrapper)));
+                                sink.error(convertError(error, scriptContextImpl)));
 
                         promise
                                 .invokeMember("then", resolve)
                                 .invokeMember("catch", reject);
                     } catch (Exception ex) {
-                        sink.error(convertError(ex, contextWrapper));
+                        sink.error(convertError(ex, scriptContextImpl));
                     }
                 });
             }
@@ -105,33 +105,33 @@ public class AsyncScriptExecutor {
         return Mono.just(response);
     }
 
-    private ScriptExecutionException convertError(Object error, ContextWrapper contextWrapper) {
+    private ScriptExecutionException convertError(Object error, ScriptContextImpl scriptContextImpl) {
         try {
             if (error instanceof ScriptExecutionException) {
                 return (ScriptExecutionException) error;
             } else if (error instanceof Throwable) {
                 // received when error is thrown in host (java) code
-                return new ScriptExecutionException(contextWrapper, (Throwable) error);
+                return new ScriptExecutionException(scriptContextImpl, (Throwable) error);
             } else {
                 // received when error is thrown in JS
                 Value errorValue = Value.asValue(error);
                 if (errorValue.isException()) {
-                    return new ScriptExecutionException(contextWrapper, errorValue.throwException());
+                    return new ScriptExecutionException(scriptContextImpl, errorValue.throwException());
                 } else if (errorValue.hasMember("stack")) {
                     Value polyglotValue = errorValue.getMember("stack");
-                    return new ScriptExecutionException(contextWrapper, errorValue.toString(), polyglotValue.toString());
+                    return new ScriptExecutionException(scriptContextImpl, errorValue.toString(), polyglotValue.toString());
                 }
             }
 
-            return new ScriptExecutionException(contextWrapper, "Unknown exception when converting error");
+            return new ScriptExecutionException(scriptContextImpl, "Unknown exception when converting error");
         } catch (Exception e) {
-            return new ScriptExecutionException(contextWrapper, e);
+            return new ScriptExecutionException(scriptContextImpl, e);
         }
     }
 
-    private ContextWrapper createNewContext(Source source,
-                                            Consumer<ScriptContext> contextDecorator,
-                                            Scheduler scheduler) {
+    private ScriptContextImpl createNewContext(Source source,
+                                               Consumer<ScriptContext> contextDecorator,
+                                               Scheduler scheduler) {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         Context.Builder contextBuilder = Context.newBuilder(JS_LANGUAGE_TYPE)
                 .engine(engine)
@@ -140,17 +140,17 @@ public class AsyncScriptExecutor {
                 .timeZone(ZoneId.of("UTC"));
 
         Context context = contextBuilder.build();
-        ContextWrapper contextWrapper = new ContextWrapper(context, source, scheduler, outputStream);
-        contextDecorator.accept(contextWrapper);
-        return contextWrapper;
+        ScriptContextImpl scriptContextImpl = new ScriptContextImpl(context, source, scheduler, outputStream);
+        contextDecorator.accept(scriptContextImpl);
+        return scriptContextImpl;
     }
 
-    private void closeContext(ContextWrapper contextWrapper) {
+    private void closeContext(ScriptContextImpl scriptContextImpl) {
         // this looks strange, if we would call it immediately then it would result in failed Promise due to context
         // being closed while evaluating the Promise handler.
         // AsyncScriptExecutor.wrapMonoInPromise subscribe call which invokes promise handler basically bubbles to
         // using.close operator, which closes the context which is evaluating the promise belonging to that context.
-        contextWrapper.getScheduler().schedule(contextWrapper::close);
+        scriptContextImpl.getScheduler().schedule(scriptContextImpl::close);
     }
 
     @Getter
