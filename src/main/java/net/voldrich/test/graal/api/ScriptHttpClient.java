@@ -1,8 +1,8 @@
 package net.voldrich.test.graal.api;
 
 import lombok.extern.slf4j.Slf4j;
-import net.voldrich.test.graal.script.ScriptContext;
-import net.voldrich.test.graal.script.ScriptUtils;
+import net.voldrich.graal.async.script.ScriptContext;
+import net.voldrich.graal.async.script.ScriptUtils;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
@@ -76,8 +76,6 @@ public class ScriptHttpClient {
         if (response.statusCode().is2xxSuccessful()) {
             return response.bodyToMono(String.class)
                     .map(body -> new ScriptHttpResponse(scriptContext.getContext(), response, body));
-        } else if (response.statusCode().is4xxClientError()) {
-            return response.createException().flatMap(Mono::error);
         } else {
             return response.createException().flatMap(Mono::error);
         }

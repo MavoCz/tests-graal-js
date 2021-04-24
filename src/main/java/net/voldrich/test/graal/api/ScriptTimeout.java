@@ -1,8 +1,8 @@
 package net.voldrich.test.graal.api;
 
 import lombok.extern.slf4j.Slf4j;
-import net.voldrich.test.graal.script.ScriptContext;
-import net.voldrich.test.graal.script.ScriptExecutionException;
+import net.voldrich.graal.async.script.ScriptContext;
+import net.voldrich.graal.async.script.ScriptExecutionException;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 import reactor.core.publisher.Mono;

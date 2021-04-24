@@ -12,7 +12,7 @@ import org.springframework.web.reactive.function.server.ServerResponse;
 public class ScriptServerRouter {
 
     @Bean
-    public RouterFunction<ServerResponse> route(ScriptHandler scriptHandler) {
+    public RouterFunction<ServerResponse> route(ScriptRequestHandler scriptHandler) {
         return RouterFunctions
                 .route(RequestPredicates
                                 .POST("/script/execute")

@@ -1,7 +1,7 @@
 package net.voldrich.test.graal.dto;
 
 import lombok.Getter;
-import net.voldrich.test.graal.script.ScriptExecutionException;
+import net.voldrich.graal.async.script.ScriptExecutionException;
 
 @Getter
 public class ScriptErrorResponseDto {

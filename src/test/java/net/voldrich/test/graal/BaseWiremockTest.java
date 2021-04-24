@@ -4,27 +4,21 @@ import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import lombok.extern.slf4j.Slf4j;
-import net.voldrich.test.graal.script.AsyncScriptExecutor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.web.reactive.function.BodyInserters;
 import ru.lanwen.wiremock.ext.WiremockResolver;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-
 import static net.voldrich.test.graal.ScriptTestUtils.fromResource;
 
 @ExtendWith(WiremockResolver.class)
 @WebFluxTest(controllers = ScriptServerRouter.class)
-@Import({ScriptHandler.class})
+@Import({ScriptRequestHandler.class})
 @Slf4j
 public abstract class BaseWiremockTest {
     protected WireMockServer wireMock;

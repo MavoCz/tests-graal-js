@@ -1,6 +1,6 @@
 package net.voldrich.test.graal.api;
 
-import net.voldrich.test.graal.script.ScriptUtils;
+import net.voldrich.graal.async.script.ScriptUtils;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;

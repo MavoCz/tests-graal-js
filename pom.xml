@@ -51,6 +51,12 @@
             <scope>provided</scope>
         </dependency>
 
+        <dependency>
+            <groupId>net.voldrich.graal</groupId>
+            <artifactId>script-reactive-executor</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
+        </dependency>
+
 
         <!-- https://mvnrepository.com/artifact/org.graalvm.sdk/graal-sdk -->
         <!-- Graal VM -->
@@ -144,7 +150,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>net.voldrich.test.graal.ScriptHandler</mainClass>
+                            <mainClass>net.voldrich.test.graal.ScriptRequestHandler</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
